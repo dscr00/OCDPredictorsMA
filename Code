@@ -1,0 +1,1043 @@
+Predictors of deep brain stimulation (DBS) response 
+ in patients with obsessive compulsive disorder (OCD): 
+a systematic review and meta-analysis
+
+library(readxl)
+OCD_Clinical_Predictors_Meta_analysis_FINAL <- read_excel("OneDrive/Most important back up/Oxford Functional Neurosurgery/Meta-analysis/OCD Clinical Predictors Meta-analysis FINAL.xlsx")
+
+
+# Load the necessary libraries
+library(readxl)
+library(dplyr)
+library(purrr)
+
+# Read the data
+
+
+
+
+OCD_Clinical_Predictors_Meta_analysis_FINAL <- read_excel("OneDrive/Most important back up/Oxford Functional Neurosurgery/Meta-analysis/OCD Clinical Predictors Meta-analysis FINAL.xlsx")
+
+
+
+# Convert "Baseline_Y_BOCS" to numeric
+OCD_Clinical_Predictors_Meta_analysis_FINAL$Baseline_Y_BOCS <- as.numeric(OCD_Clinical_Predictors_Meta_analysis_FINAL$Baseline_Y_BOCS)
+
+# Check the type of each column in the data frame
+column_types <- sapply(OCD_Clinical_Predictors_Meta_analysis_FINAL, class)
+
+# Print the column types
+
+# Clean the column names
+cleaned_column_names <- colnames(OCD_Clinical_Predictors_Meta_analysis_FINAL) %>%
+  gsub("\\W", "_", .) %>%   # Replace all non-alphanumeric characters with "_"
+  gsub("_+", "_", .) %>%    # Replace consecutive "_" with a single "_"
+  gsub("^_", "", .) %>%     # Remove leading "_"
+  gsub("_$", "", .)         # Remove trailing "_"
+
+# Check for duplicates and add a unique suffix to any duplicate column names
+cleaned_column_names <- make.unique(cleaned_column_names, sep = "_")
+
+# Rename columns in the data frame
+colnames(OCD_Clinical_Predictors_Meta_analysis_FINAL) <- cleaned_column_names
+
+# Manually specify binary variables
+binary_variables <- c("ALIC", "NAcc_Striatal_axis", "BNST", "VC_VS", "NAcc_vALIC", "Tractography")
+
+# Convert binary variables into factors
+OCD_Clinical_Predictors_Meta_analysis_FINAL[binary_variables] <- lapply(OCD_Clinical_Predictors_Meta_analysis_FINAL[binary_variables], function(x) as.factor(as.character(x)))
+
+
+
+
+
+
+
+
+
+############ PMM imputation
+
+
+# Load the necessary library
+library(mice)
+
+# Perform PMM imputation
+mice_imputed_data <- mice::mice(OCD_Clinical_Predictors_Meta_analysis_FINAL, method = 'pmm', m=5)
+
+# Complete the data with the imputed values
+pmm_imputed_data <- mice::complete(mice_imputed_data)
+
+# Export the PMM imputed data to Excel
+write.xlsx(pmm_imputed_data, "pmm_imputed_data_corrected.xlsx")
+
+
+
+
+
+
+
+
+
+############    ROB analysis    -> still needs to be done???
+
+#loading excel sheet 
+
+library(readxl)
+library(openxlsx)
+Spondylodiscitis_ROB <- read_excel("Desktop/Cambridge/Spondylodiscitis /Spondylodiscitis ROB Copy.xlsx")
+
+
+
+rob_summary(Spondylodiscitis_ROB, tool = "ROBINS-I", weighted = FALSE , overall = TRUE) 
+
+
+
+
+
+
+
+
+
+
+########################## descriptive graphs
+
+
+
+library(readxl)
+Spondylodiscitis_Study_Characteristics <- read_excel("Desktop/Cambridge/Spondylodiscitis /Spondylodiscitis Study Characteristics.xlsx")
+
+
+
+####### 1. Make bar plot for study design
+
+#count prospective, retrospective, ambispective
+
+studydesigntable <- table(Spondylodiscitis_Study_Characteristics$`Study design`)
+
+print(studydesigntable)
+
+#Create dataframe
+
+
+data1 <- data.frame(
+  name=c("Prospective", "Retrospective", "Ambispective") ,  
+  value=c(3, 27, 1)
+)
+
+
+
+barplot_studytype_spond <- barplot(height = data1$value,
+                                   names.arg = data1$name,
+                                   xlab = "Study design",
+                                   ylab = "Number of studies",
+                                   ylim = c(0,30), xpd = TRUE,
+                                   col="black", angle = c(45, 90, 70), density = c(90,30,300))
+
+
+####### 2. Make bar plot for study type
+
+#count case-control, cohort and case series
+
+studytypetable <- table(Spondylodiscitis_Study_Characteristics$`Study type`)
+
+print(studytypetable)
+
+#Create dataframe
+
+
+data1 <- data.frame(
+  name=c("Cohort", "Case series", "Case-control") ,  
+  value=c(21, 9, 1)
+)
+
+
+
+
+barplot_studytype_spond <- barplot(height = data1$value,
+                                   names.arg = data1$name,
+                                   xlab = "Study design",
+                                   ylab = "Number of studies",
+                                   ylim = c(0,25), xpd = TRUE,
+                                   col=c("black", "grey", "white"))
+
+
+
+
+
+###### 3. Make bar plot for study sample size
+
+library(readxl)
+Spondylodiscitis_Study_Characteristics <- read_excel("Desktop/Cambridge/Spondylodiscitis /Spondylodiscitis Study Characteristics NEW.xlsx")
+
+
+data2 <- data.frame(
+  name=Spondylodiscitis_Study_Characteristics$Study,  
+  value=Spondylodiscitis_Study_Characteristics$`Sample size`
+)
+
+
+library(RColorBrewer)
+n <- 60
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+pie(rep(1,n), col=sample(col_vector, n))
+
+p <- barplot(height = data2$value,
+             names.arg = data2$name,
+             xlab = "Study",
+             ylab = "Sample size",
+             ylim = c(0, 37000),
+             col = col_vector,
+             xpd = TRUE,
+             beside = TRUE,
+             legend.text = Spondylodiscitis_Study_Characteristics$Author,
+             args.legend = list(xjust = 0.15,
+                                cex = 0.6, x.intersp = 0.1, bty = "n"))
+
+#make broken bar plot with ggplot2
+
+library(tidyverse)
+
+install.packages("randomcoloR")
+library(randomcoloR)
+install.packages("ggbreak")
+library(ggbreak)
+
+distinctColorPalette(k = 31, altCol = FALSE, runTsne = FALSE)
+
+Study <- Spondylodiscitis_Study_Characteristics$Study
+Sample.Size <- Spondylodiscitis_Study_Characteristics$`Sample size`
+Author <- Spondylodiscitis_Study_Characteristics$Author
+
+p1 <- ggplot(data=data2, 
+             aes(x=Study, y=Sample.Size, fill=Author)) +
+  geom_bar(stat="identity" , width=0.5) + theme_minimal() + 
+  scale_fill_manual(values=c("#D0E7E9","#E45456", "#C268DD", "#B8A2DE", "#8EBFDD",
+                             "#50635F", "#ECE440", "#67E949", "#E4C8E2", "#646BCB",
+                             "#B6A69E", "#D49653", "#E1C34E", "#67EAC9", "#BDE856",
+                             "#D64BA2", "#DC3FEA", "#E096E5", "#BBEEC7", "#74A1DF",
+                             "#7046DE", "#7DB8A7", "#72AF5A", "#D8C08D", "#D17CA1",
+                             "#79E2E7", "#60E37A", "#E4DCC2", "#EAA09C", "#DAE999", "#97E997"))
+
+p1
+
+p2 <- p1 + scale_y_break(c(710, 10100, 10200, 34400))  
+
+p2
+
+randomColor(count=31)
+
+
+######make plot for world map
+
+install.packages(c("cowplot", "googleway", "ggplot2", "ggrepel", 
+                   "ggspatial", "libwgeom", "sf", "rnaturalearth", "rnaturalearthdata"))
+
+install.packages("rworldmap",dependencies=TRUE)
+
+library("ggplot2")
+theme_set(theme_bw())
+library("sf")
+
+#prep
+Spondylodiscitis_World_Map <- read_excel("Desktop/Cambridge/Spondylodiscitis /Spondylodiscitis World Map.xlsx")
+
+worldprep <- joinCountryData2Map(Spondylodiscitis_World_Map, joinCode = "ISO3", nameJoinColumn = "ISO3V10", nameCountryColumn = "Country", suggestForFailedCodes = FALSE, mapResolution = "coarse", projection = NA, verbose = FALSE)
+
+worldmapspondy <- mapCountryData(mapToPlot = worldprep, nameColumnToPlot = "Studies", 
+                                 xlim = NA, ylim = NA, mapRegion = "world", 
+                                 catMethod = c(0:14), colourPalette = "rainbow", 
+                                 addLegend = FALSE, borderCol = "black", mapTitle = "Number of studies per country", 
+                                 aspect = 1, missingCountryCol = NA, add = FALSE, 
+                                 nameColumnToHatch = TRUE, lwd = 0.5, oceanCol = NA) 
+
+do.call(addMapLegendBoxes
+        , c(worldmapspondy
+            ,list(legendText=c("1","2","5","13")
+                  , x="top",title="Number of studies",horiz=TRUE)))
+
+
+#new world map
+
+
+######make plot for world map
+
+
+#prep
+Spondylodiscitis_World_Map <- read_excel("Desktop/Cambridge/Spondylodiscitis /Spondylodiscitis World Map.xlsx")
+
+worldprep <- joinCountryData2Map(Spondylodiscitis_World_Map, joinCode = "ISO3", nameJoinColumn = "ISO3V10", nameCountryColumn = "Country", suggestForFailedCodes = FALSE, mapResolution = "coarse", projection = NA, verbose = FALSE)
+
+worldmapspondy <- mapCountryData(mapToPlot = worldprep, nameColumnToPlot = "Studies", 
+                                 xlim = NA, ylim = NA, mapRegion = "world", 
+                                 catMethod = c(0:13), colourPalette = "rainbow", 
+                                 addLegend = FALSE, borderCol = "black", mapTitle = "Number of studies included per country", 
+                                 aspect = 1, missingCountryCol = NA, add = FALSE, 
+                                 nameColumnToHatch = TRUE, lwd = 0.5, oceanCol = NA) 
+
+do.call(addMapLegend
+        , c(worldmapspondy, legendLabels="all"
+            , legendWidth=0.5
+        ))
+
+
+###### 4. Make bar plot for study year
+
+
+studysamplesizetable <- table(Spondylodiscitis_Study_Characteristics$Year)
+print(studysamplesizetable)
+
+plot(studysamplesizetable)
+
+data3 <- data.frame(
+  year=c(1996:2022),  
+  number=c(1,0,0,0,0,0,2,0,1,1,0,0,0,2,1,0,0,1,2,1,0,3,1,1,4,3,7) 
+)
+
+
+barplot(height = data3$value,
+        names.arg = data3$name,
+        xlab = "Year of study publication",
+        ylab = "Number of studies",
+        col = "black",
+        ylim = NULL, xpd = TRUE)
+
+gap.barplot(data3,gap,xaxlab,xtics,yaxlab,ytics,xlim=NA,ylim=NA,xlab=NULL,
+            ylab=NULL,horiz=FALSE,col,...)
+
+
+library(ggplot2)
+library(dplyr)
+install.packages("ggthemes")
+library(ggthemes)
+
+
+
+# Plot
+
+
+data3 %>%
+  ggplot(aes(x=year, y=number)) +
+  geom_line(linetype="dashed", color="black", size=0.3) +
+  geom_point(size=3, colour = "black") + theme_minimal() +  
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(y = "number of studies", x ="year of publication") +
+  scale_x_continuous(name= waiver(), breaks = data3$year) +
+  scale_y_continuous(name= waiver(), breaks = 1:7) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### responder vs partial responder vs non responder comparative violin plots
+
+
+# Load the necessary libraries
+library(ggplot2)
+library(gridExtra)
+library(tidyr)
+library(dplyr)
+
+
+
+
+
+# Define a function to generate the violin plot and box plot
+plot_variable <- function(var_name) {
+  # Filter the data to remove NA values for the current variable
+  data_to_use <- OCD_Clinical_Predictors_Meta_analysis_FINAL %>%
+    select(Responder, Partial_Responder, Non_Responder, all_of(var_name)) %>%
+    drop_na()
+  
+  # Reshape the data to long format for plotting
+  data_long <- data_to_use %>%
+    pivot_longer(c(Responder, Partial_Responder, Non_Responder), names_to = "Group", values_to = "Value") %>%
+    filter(Value == 1) %>%
+    mutate(Group = factor(Group, levels = c("Responder", "Partial_Responder", "Non_Responder")))
+  
+  # Violin plot
+  p <- ggplot(data_long, aes(x = Group, y = data_to_use[[var_name]], fill = Group)) +
+    geom_violin(trim = FALSE) +
+    geom_boxplot(width = 0.1, color = "black", fill = "white") + # Reduced to 1/2
+    scale_fill_brewer(palette = "Set1") +
+    labs(title = var_name, x = "", y = "") +
+    theme_bw() +
+    theme(
+      plot.title = element_text(size = 11, face = "bold", hjust = 0.5), # Reduced to 1/2
+      axis.title = element_text(size = 9, face = "bold"), # Reduced to 1/2
+      axis.text = element_text(size = 7.5), # Reduced to 1/2
+    ) +
+    guides(fill=FALSE) # remove legend
+  
+  # Return the plot
+  return(p)
+}
+
+# Get all continuous variable names
+vars <- names(OCD_Clinical_Predictors_Meta_analysis_FINAL)[sapply(OCD_Clinical_Predictors_Meta_analysis_FINAL, function(x) length(unique(x)) > 2)]
+
+# Create a list of empty lists to store the plots
+plots_list <- list()
+for (i in 1:ceiling(length(vars)/9)) {
+  plots_list[[i]] <- list()
+}
+
+# Generate a plot for each variable and store it in the corresponding list
+for (i in seq_along(vars)) {
+  list_index <- ceiling(i / 9)
+  plots_list[[list_index]][[vars[i]]] <- plot_variable(vars[i])
+}
+
+# Calculate the number of rows and columns for the grid
+n_cols <- 3
+n_rows <- 3
+
+# Create vector for heights and widths
+heights <- rep(1, n_rows)
+widths <- rep(1, n_cols)
+
+# Arrange the plots into a grid
+for (i in seq_along(plots_list)) {
+  do.call("grid.arrange", c(plots_list[[i]], ncol = n_cols, nrow = n_rows, list(heights = heights, widths = widths)))
+}
+
+
+################################# Meta-analysis
+
+
+
+
+############# ANOVA & Chi squared test
+
+# Install and load necessary libraries
+if(!require("writexl")) install.packages("writexl")
+if(!require("broom")) install.packages("broom")
+library(writexl)
+library(broom)
+
+# Create dataframes to store results
+chisq_results_df <- data.frame(Variable = character(), X_Squared = numeric(), Degrees_of_Freedom = numeric(), P_Value = numeric(), stringsAsFactors = FALSE)
+anova_results_df <- data.frame(Variable = character(), Degrees_of_Freedom = numeric(), Sum_Sq = numeric(), Mean_Sq = numeric(), F_Value = numeric(), P_Value = numeric(), stringsAsFactors = FALSE)
+posthoc_results_df <- data.frame(Variable = character(), Comparison = character(), Difference = numeric(), Lower_Confidence = numeric(), Upper_Confidence = numeric(), P_Value = numeric(), stringsAsFactors = FALSE)
+
+# Create Response_Status variable
+OCD_Clinical_Predictors_Meta_analysis_FINAL <- OCD_Clinical_Predictors_Meta_analysis_FINAL %>%
+  mutate(Response_Status = case_when(
+    Responder == 1 ~ "Responder",
+    Partial_Responder == 1 ~ "Partial_Responder",
+    Non_Responder == 1 ~ "Non_Responder"
+  ))
+
+vars <- setdiff(names(OCD_Clinical_Predictors_Meta_analysis_FINAL), c("Responder", "Partial_Responder", "Non_Responder", "Response_Status"))
+
+for (var in vars) {
+  data_subset <- subset(OCD_Clinical_Predictors_Meta_analysis_FINAL, !is.na(OCD_Clinical_Predictors_Meta_analysis_FINAL[[var]]))
+  
+  if (length(unique(data_subset[[var]])) == 2) {
+    chisq_test <- chisq.test(table(data_subset$Response_Status, data_subset[[var]]))
+    # Add the result to the dataframe
+    chisq_result <- tidy(chisq_test)
+    chisq_results_df <- rbind(chisq_results_df, data.frame(Variable = var, X_Squared = chisq_result$statistic, Degrees_of_Freedom = chisq_result$parameter, P_Value = chisq_result$p.value))
+  } else {
+    anova_model <- aov(data_subset[[var]] ~ Response_Status, data = data_subset)
+    # Add the result to the dataframe
+    anova_result <- tidy(anova_model)
+    anova_results_df <- rbind(anova_results_df, data.frame(Variable = var, Degrees_of_Freedom = anova_result$df, Sum_Sq = anova_result$sumsq, Mean_Sq = anova_result$meansq, F_Value = anova_result$statistic, P_Value = anova_result$p.value))
+    
+    # Perform post-hoc Tukey's HSD if ANOVA is significant
+    if (anova_result$p.value < 0.05) {
+      posthoc <- TukeyHSD(anova_model)
+      posthoc_result <- tidy(posthoc)
+      # Add the result to the dataframe
+      posthoc_results_df <- rbind(posthoc_results_df, cbind(Variable = var, posthoc_result))
+    }
+  }
+}
+
+# Write the data frames to Excel file
+write_xlsx(list(Chi_Squared_Results = chisq_results_df, ANOVA_Results = anova_results_df, Posthoc_Tukey_Results = posthoc_results_df), "analysis_results_new_corrected_1.xlsx")
+
+
+
+####### straight test results
+
+# Get all variable names except the response status ones
+vars <- setdiff(names(OCD_Clinical_Predictors_Meta_analysis_FINAL), c("Responder", "Partial_Responder", "Non_Responder", "Response_Status"))
+
+# Loop through the variables
+for (var in vars) {
+  # Get the subset of the data without NA values for the current variable
+  data_subset <- subset(OCD_Clinical_Predictors_Meta_analysis_FINAL, !is.na(OCD_Clinical_Predictors_Meta_analysis_FINAL[[var]]))
+  
+  # Check if the variable is binary (has only two unique values, assumed to be 0 and 1)
+  if (length(unique(data_subset[[var]])) == 2) {
+    cat("\n\nChi-square test for ", var, "\n")
+    # Perform chi-square test
+    chisq_test <- chisq.test(table(data_subset$Response_Status, data_subset[[var]]))
+    print(chisq_test)
+  } else {
+    cat("\n\nANOVA for ", var, "\n")
+    # Perform ANOVA
+    anova_model <- aov(data_subset[[var]] ~ Response_Status, data = data_subset)
+    print(summary(anova_model))
+    
+    # Perform post-hoc Tukey's HSD if ANOVA is significant
+    if (summary(anova_model)[[1]][["Pr(>F)"]][1] < 0.05) {
+      cat("Post-hoc Tukey's HSD for significant ANOVA of ", var, "\n")
+      posthoc <- TukeyHSD(anova_model)
+      print(posthoc)
+    }
+  }
+}
+
+
+
+
+
+############ linear regression for each outcome variable  -> outcome variables are Post_Y_BOCS_short_term", "Post_Y_BOCS_long_term", "Improvement_short_term", "Improvement_long_term"
+
+# Load the necessary library
+library(tidyverse)
+
+# Convert "Baseline_Y_BOCS" to numeric
+OCD_Clinical_Predictors_Meta_analysis_FINAL$Baseline_Y_BOCS <- as.numeric(OCD_Clinical_Predictors_Meta_analysis_FINAL$Baseline_Y_BOCS)
+
+# Check the type of each column in the data frame
+column_types <- sapply(OCD_Clinical_Predictors_Meta_analysis_FINAL, class)
+
+# Print the column types
+
+# Clean the column names
+cleaned_column_names <- colnames(OCD_Clinical_Predictors_Meta_analysis_FINAL) %>%
+  gsub("\\W", "_", .) %>%   # Replace all non-alphanumeric characters with "_"
+  gsub("_+", "_", .) %>%    # Replace consecutive "_" with a single "_"
+  gsub("^_", "", .) %>%     # Remove leading "_"
+  gsub("_$", "", .)         # Remove trailing "_"
+
+# Check for duplicates and add a unique suffix to any duplicate column names
+cleaned_column_names <- make.unique(cleaned_column_names, sep = "_")
+
+# Rename columns in the data frame
+colnames(OCD_Clinical_Predictors_Meta_analysis_FINAL) <- cleaned_column_names
+
+# Manually specify binary variables
+binary_variables <- c("ALIC", "NAcc_Striatal_axis", "BNST", "VC_VS", "NAcc_vALIC")
+OCD_Clinical_Predictors_Meta_analysis_FINAL$Baseline_Y_BOCS <- as.numeric(OCD_Clinical_Predictors_Meta_analysis_FINAL$Baseline_Y_BOCS)
+
+
+# List of outcome variables
+outcome_variables <- c("Post_Y_BOCS_short_term", "Post_Y_BOCS_long_term", "Improvement_short_term", "Improvement_long_term")
+explanatory_variables <- c("Females", "Illness_Duration", "Onset_Age", "Pre_Surgery_Duration", 
+                           "DBS_Duration", "Major_Depression_Disorder", "Baseline_Y_BOCS", "Antidepressants", "Anxiolytics", 
+                           "Antipsychotics", "Contamination_Cleaning_Baseline", 
+                           "Harm_Checking_Baseline", "Aggression_Intrusive_Thoughts_Baseline", 
+                           "Symmetry_Hoarding_Perfectionism_Baseline", 
+                           "Mental_Somatic_Spiritual_Rituals_Baseline", "Anxiety_Avoidance_Fear_Baseline", 
+                           "Baseline_Depression_HAM_D", "Depression_Improvement", "Baseline_GAF", 
+                            "Follow_up_Duration_months", "DBS_Duration",
+                           "Neurological_Side_Effects", "Psychiatric_Side_Effects", "Elevated_Mood_Hypomania",
+                           "DBS_Voltage_Initial_mean", "DBS_Voltage_Final_mean"
+)
+
+
+
+
+# Perform the multivariate linear regression for each outcome variable
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the linear regression using completed data
+  model <- lm(formula, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Print the summary
+  cat("\n\nMultivariate Linear Regression for ", outcome, "\n")
+  print(summary(model))
+}
+
+AIC(model) # -> -12.75721 (mean matching) > -14.2418 (PMM imputation)
+
+
+
+library(broom)
+library(dplyr)
+library(openxlsx)
+
+# Initialize an empty list to store the models' summaries
+model_summaries <- list()
+
+# Perform the multivariate linear regression for each outcome variable
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the linear regression using completed data
+  model <- lm(formula, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Get the summary as a tidy dataframe
+  model_summary <- tidy(summary(model))
+  
+  # Add additional model metrics
+  model_summary$Outcome <- outcome
+  model_summary$AIC <- AIC(model)
+  model_summary$Residual_SE <- summary(model)$sigma
+  model_summary$DF <- df.residual(model)
+  model_summary$R_Squared <- summary(model)$r.squared
+  model_summary$Adj_R_Squared <- summary(model)$adj.r.squared
+  model_summary$F_Statistic <- summary(model)$fstatistic[1]
+  
+  # Add the model summary to the list
+  model_summaries[[outcome]] <- model_summary
+}
+
+# Combine all summaries into a single dataframe
+all_model_summaries <- bind_rows(model_summaries)
+
+# Save the dataframe to an Excel file
+write.xlsx(all_model_summaries, "linear_model_summaries_PMM_Final_corrected.xlsx")
+
+
+
+
+
+###########  scatter plots based on linear regression results
+
+
+# Load necessary packages
+library(ggplot2)
+library(ggpubr)
+
+
+
+
+# Function to generate scatter plots with regression lines
+plot_scatter <- function(model, data, outcome) {
+  # Create a dataframe of significant variables
+  sig_vars <- broom::tidy(model) %>% filter(p.value < 0.05)
+  
+  # Iterate over significant variables
+  for (var_name in sig_vars$term) {
+    if (var_name != "(Intercept)") {
+      # Create a scatter plot of outcome variable against predictor variable
+      p <- ggplot(data, aes_string(x = var_name, y = outcome)) +
+        geom_point(alpha = 0.6, color = "blue") +
+        geom_smooth(method = "lm", color = "red", se = TRUE, size = 1.2, linetype = "solid") +
+        theme_minimal(base_size = 16) +
+        labs(x = var_name, y = outcome, title = paste(outcome, "vs", var_name)) +
+        theme(
+          plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+          axis.text = element_text(size = 14),
+          axis.title = element_text(size = 16, face = "bold"),
+          legend.position = "bottom",
+          panel.grid.major = element_line(color = "grey", linetype = "dashed")
+        )
+      
+      # Print the plot
+      print(p)
+    }
+  }
+}
+
+# Perform the multivariate linear regression for each outcome variable
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the linear regression using completed data
+  model <- lm(formula, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Generate scatter plots for significant variables
+  plot_scatter(model, OCD_Clinical_Predictors_Meta_analysis_FINAL, outcome)
+}
+
+
+
+
+
+library(gridExtra)
+
+# Function to generate scatter plots with regression lines
+plot_scatter <- function(model, data, outcome) {
+  # Create a dataframe of significant variables
+  sig_vars <- broom::tidy(model) %>% filter(p.value < 0.05)
+  
+  # Initialize an empty list to store the plots
+  plots <- list()
+  
+  # Iterate over significant variables
+  for (var_name in sig_vars$term) {
+    if (var_name != "(Intercept)") {
+      # Create a scatter plot of outcome variable against predictor variable
+      p <- ggplot(data, aes_string(x = var_name, y = outcome)) +
+        geom_point(alpha = 0.6, color = "blue") +
+        geom_smooth(method = "lm", color = "red", se = TRUE, size = 1.2, linetype = "solid") +
+        theme_minimal(base_size = 8) + # Decreased font size to 50%
+        labs(x = var_name, y = outcome, title = paste(outcome, "vs", var_name)) +
+        theme(
+          plot.title = element_text(hjust = 0.5, size = 10, face = "bold"), # Decreased font size to 50%
+          axis.text = element_text(size = 7), # Decreased font size to 50%
+          axis.title = element_text(size = 8, face = "bold"), # Decreased font size to 50%
+          legend.position = "bottom",
+          panel.grid.major = element_line(color = "grey", linetype = "dashed")
+        )
+      
+      # Append the plot to the list
+      plots[[length(plots) + 1]] <- p
+    }
+  }
+  
+  # Return the list of plots
+  return(plots)
+}
+
+# Initialize an empty list to store all plots
+all_plots <- list()
+
+# Perform the multivariate linear regression for each outcome variable
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the linear regression using completed data
+  model <- lm(formula, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Generate scatter plots for significant variables and append to the list of all plots
+  all_plots <- c(all_plots, plot_scatter(model, OCD_Clinical_Predictors_Meta_analysis_FINAL, outcome))
+}
+
+# Arrange all plots into a grid
+grid.arrange(grobs = all_plots, ncol = 3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############  logistic regression for each outcome variable (best AIC model) - outcome variables are Responder, Partial responder, and non responder
+
+
+# List of outcome variables
+outcome_variables <- c("Responder", "Partial_Responder", "Non_Responder")
+explanatory_variables <- c("Females", "Illness_Duration",  "Pre_Surgery_Duration", 
+                           "DBS_Duration", "Major_Depression_Disorder", "Baseline_Y_BOCS", "Antidepressants", "Anxiolytics", 
+                           "Antipsychotics", "Contamination_Cleaning_Baseline", 
+                           "Harm_Checking_Baseline", "Aggression_Intrusive_Thoughts_Baseline", 
+                           "Symmetry_Hoarding_Perfectionism_Baseline", 
+                           "Mental_Somatic_Spiritual_Rituals_Baseline", "Anxiety_Avoidance_Fear_Baseline", 
+                           "Baseline_Depression_HAM_D", "Depression_Improvement", "Baseline_GAF", 
+                           "Follow_up_Duration_months", "DBS_Duration",
+                           "Neurological_Side_Effects", "Psychiatric_Side_Effects", "Elevated_Mood_Hypomania"
+)
+
+
+
+
+# Perform the multivariate linear regression for each outcome variable
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the linear regression using completed data
+  model <- glm(formula, family = binomial, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Print the summary
+  cat("\n\nMultivariate logistic Regression for ", outcome, "\n")
+  print(summary(model))
+}
+
+
+
+
+# (VIF TEST) ->: with which we figured out the collinear variables
+
+library(car)
+
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the logistic regression using completed data
+  model <- glm(formula, family = binomial, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Print the summary
+  cat("\n\nMultivariate logistic Regression for ", outcome, "\n")
+  print(summary(model))
+  
+  # Check for multicollinearity
+  vif_values <- vif(model)
+  
+  # Print the VIF values
+  cat("\n\nVariance Inflation Factors (VIF) for each explanatory variable:\n")
+  print(vif_values)
+  
+  # Print variables with high VIF values
+  high_vif <- vif_values[vif_values > 5]
+  if(length(high_vif) > 0) {
+    cat("\n\nVariables with high multicollinearity (VIF > 5):\n")
+    print(high_vif)
+  }
+}
+
+
+
+
+
+# Install and load necessary libraries
+if(!require("broom")) install.packages("broom")
+library(broom)
+
+# Initialize an empty list to store the models' summaries
+model_summaries <- list()
+
+# List of outcome variables
+outcome_variables <- c("Responder", "Partial_Responder", "Non_Responder")
+
+# Explanatory variables
+explanatory_variables <- c("Females", "Illness_Duration",  "Pre_Surgery_Duration", 
+                           "DBS_Duration", "Major_Depression_Disorder", "Baseline_Y_BOCS", "Antidepressants", "Anxiolytics", 
+                           "Antipsychotics", "Contamination_Cleaning_Baseline", 
+                           "Harm_Checking_Baseline", "Aggression_Intrusive_Thoughts_Baseline", 
+                           "Symmetry_Hoarding_Perfectionism_Baseline", 
+                           "Mental_Somatic_Spiritual_Rituals_Baseline", "Anxiety_Avoidance_Fear_Baseline", 
+                           "Baseline_Depression_HAM_D", "Depression_Improvement", "Baseline_GAF", 
+                           "Follow_up_Duration_months", "DBS_Duration",
+                           "Neurological_Side_Effects", "Psychiatric_Side_Effects", "Elevated_Mood_Hypomania")
+
+# Perform the logistic regression for each outcome variable
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the logistic regression
+  model <- glm(formula, family = binomial, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Get the summary as a tidy dataframe
+  model_summary <- tidy(model)
+  
+  # Add additional model metrics
+  model_summary$Outcome <- outcome
+  model_summary$AIC <- AIC(model)
+  model_summary$Deviance <- summary(model)$deviance
+  model_summary$Residual_DF <- summary(model)$df.residual
+  model_summary$Null_Deviance <- summary(model)$null.deviance
+  model_summary$Null_DF <- summary(model)$df.null
+  
+  # Add the model summary to the list
+  model_summaries[[outcome]] <- model_summary
+}
+
+# Combine all summaries into a single dataframe
+all_model_summaries <- do.call(rbind, model_summaries)
+
+# Print the summary
+print(all_model_summaries)
+
+
+# Save the dataframe to an Excel file
+write.xlsx(all_model_summaries, "log_model_summaries_final_PMM_corrected_NEW.xlsx")
+
+
+
+
+
+######## do scatter plots for logistic regression
+
+# Function to generate scatter plots with logistic regression lines
+plot_scatter <- function(model, data, outcome) {
+  # Create a dataframe of significant variables
+  sig_vars <- broom::tidy(model) %>% filter(p.value < 0.05)
+  
+  # Initialize an empty list to store the plots
+  plots <- list()
+  
+  # Iterate over significant variables
+  for (var_name in sig_vars$term) {
+    if (var_name != "(Intercept)") {
+      # Create a scatter plot of outcome variable against predictor variable
+      p <- ggplot(data, aes_string(x = var_name, y = outcome)) +
+        geom_point(alpha = 0.6, color = "blue") +
+        geom_smooth(method = "glm", method.args = list(family = "binomial"), color = "red", se = TRUE, size = 1.2) +
+        theme_minimal(base_size = 8) +
+        labs(x = var_name, y = outcome, title = paste(outcome, "vs", var_name)) +
+        theme(
+          plot.title = element_text(hjust = 0.5, size = 10, face = "bold"),
+          axis.text = element_text(size = 7),
+          axis.title = element_text(size = 8, face = "bold"),
+          legend.position = "bottom",
+          panel.grid.major = element_line(color = "grey", linetype = "dashed")
+        )
+      
+      # Append the plot to the list
+      plots[[length(plots) + 1]] <- p
+    }
+  }
+  
+  # Return the list of plots
+  return(plots)
+}
+
+# Initialize an empty list to store all plots
+all_plots <- list()
+
+# Perform the multivariate logistic regression for each outcome variable
+for (outcome in outcome_variables) {
+  # Define the formula
+  formula <- as.formula(paste(outcome, "~", paste(explanatory_variables, collapse = " + ")))
+  
+  # Run the logistic regression using completed data
+  model <- glm(formula, family = binomial, data = OCD_Clinical_Predictors_Meta_analysis_FINAL)
+  
+  # Generate scatter plots for significant variables and append to the list of all plots
+  all_plots <- c(all_plots, plot_scatter(model, OCD_Clinical_Predictors_Meta_analysis_FINAL, outcome))
+}
+
+# Arrange all plots into a grid
+grid.arrange(grobs = all_plots, ncol = 3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+######################correlation analysis with non imputed data
+
+library(corrplot)
+library(ggplot2)
+library(ggsignif)
+
+
+
+# Subset only numeric variables
+numeric_variables <- OCD_Clinical_Predictors_Meta_analysis_FINAL %>%
+  select_if(is.numeric)
+
+# Calculate the correlation matrix
+cor_matrix <- cor(numeric_variables, use = "pairwise.complete.obs")
+
+# Convert the correlation matrix to a tidy data frame
+cor_matrix_tidy <- as.data.frame(as.table(cor_matrix))
+colnames(cor_matrix_tidy) <- c("Variable1", "Variable2", "Correlation")
+
+# Create the correlation heatmap
+heatmap_plot <- ggplot(cor_matrix_tidy, aes(Variable1, Variable2, fill = Correlation)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c() +  # Use Viridis color scale
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Correlation Heatmap",
+       x = "Variable 1",
+       y = "Variable 2",
+       fill = "Correlation") +
+  theme(plot.title = element_text(size = 16, face = "bold"),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+        legend.title = element_text(size = 12))
+
+# Add significance asterisks (using NEJM method) with neon red color
+heatmap_plot_with_signif <- heatmap_plot +
+  geom_signif(comparisons = list(c("Variable1", "Variable2")), map_signif_level = TRUE,
+              textsize = 4, test = "t.test", step_increase = 0.05) +
+  theme(legend.text = element_text(color = "black"),
+        legend.position = "right",    # Adjust the legend position
+        legend.justification = "center",
+        legend.margin = margin(t = 0, r = 5, b = 0, l = 5)) +  # Adjust the legend margin
+  guides(fill = guide_colorbar(barwidth = 10, barheight = 0.5))
+
+# Print the correlation heatmap with significance asterisks
+print(heatmap_plot_with_signif)
+
+
+
+
+
+############ proper correatlion plot
+
+
+numeric_variables <- OCD_Clinical_Predictors_Meta_analysis_FINAL %>%
+  select_if(is.numeric)
+
+# Calculate correlations for numeric variables
+correlations <- cor(numeric_variables, use = "pairwise.complete.obs")
+
+# Convert the correlation matrix to a data frame
+cor_df <- as.data.frame(as.table(correlations))
+
+# Create a correlation matrix plot
+ggplot(data = cor_df, aes(x = Var1, y = Var2, fill = Freq)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
+                       name = "Correlation", limits = c(-1, 1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Correlation Heatmap",
+       x = "Variables", y = "Variables") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggsignif::geom_signif(data = cor_df, comparisons = list(c("Age", "Females")), 
+                        map_signif_level = TRUE, tip_length = 0.02, 
+                        textsize = 1, vjust = -0.5) +
+  ggsignif::geom_signif(data = cor_df, comparisons = list(c("Responder", "Partial Responder"),
+                                                          c("Responder", "Non-Responder"),
+                                                          c("Partial Responder", "Non-Responder")), 
+                        map_signif_level = TRUE, tip_length = 0.02, 
+                        textsize = 1, vjust = -0.5) +
+  coord_fixed()
+
+
+
+################### correlation table               - zero significant correlations
+numeric_variables <- OCD_Clinical_Predictors_Meta_analysis_FINAL %>%
+  select_if(is.numeric)
+
+# Calculate correlations for numeric variables and p-values
+correlations <- cor(numeric_variables, use = "pairwise.complete.obs")
+p_values <- cor.mtest(numeric_variables, conf.level = 0.95)$p
+
+# Create a data frame with correlations and p-values
+cor_df <- data.frame(Var1 = rownames(correlations),
+                     Var2 = colnames(correlations),
+                     Correlation = as.vector(correlations),
+                     p_value = as.vector(p_values))
+
+# Filter the data frame to include only significant correlations (p-value < 0.05) and exclude correlations with the same variables
+significant_correlations <- cor_df[cor_df$p_value < 0.05 & cor_df$Var1 != cor_df$Var2, ]
+
+# Print the correlation table
+print("Correlation Table:")
+print(significant_correlations)
